@@ -1,27 +1,15 @@
-#Ajuda na passagem de argumentos para o programa
 import argparse
-
-#Ferramentas criadas usando OpenCV
-import imutils
-
-#importando o OpenCV
 import cv2
+import time
 
 import particle_filter as pf
 import pf_tools as pft
-import time
-import pre-process as pp
-
+import pre_process as pp
 
 #Construindo a estrutura de argumentos
 ap = argparse.ArgumentParser()
 ap.add_argument("-v", "--video", help="path to the video file")
 args = vars(ap.parse_args())
-
-
-#Fronteiras do espectro de cor no modelo HSV
-corLower = (29, 86, 6)
-corUpper = (64, 255, 255)
 
 #Lendo o video com OpenCV
 video  = cv2.VideoCapture(args["video"])
@@ -30,9 +18,6 @@ video  = cv2.VideoCapture(args["video"])
 lst_particulas = pft.initialize_pf((1277,399))
 
 while True:
-    #calculando o tempo para processar um frame
-    start = time.time()
-
     #Captura o frame atual
     cap, frame = video.read()
 
@@ -40,43 +25,12 @@ while True:
     if frame is None:
         break
 
-    #Reduz o tamanho do frame para reduzir a carga de processamento
-    #frame = imutils.resize(frame, width=1000) #600px
-
-    #Borra a imagem para reduzir os ruidos e deixa-la uniforme
-    blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-
-    #Converte o frame para o modelo de cor HSV
-    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-
-    #Aplica uma mascara limitada pelas fronteiras, tornando o frame binario
-    mask = cv2.inRange(hsv, corLower, corUpper)
-
-    #Reduzindo as imperfeicoes removendo "bolhas" e "erosoes" do frame
-    mask = cv2.erode(mask, None, iterations=2)
-    mask = cv2.dilate(mask, None, iterations=2)
-
-    #Identificando o contorno na mascara
-    contorno = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    #Garantir que vai ser compativel com opencv 2.4 e 3
-    contorno = contorno[0] if imutils.is_cv2() else contorno[1]
-
-    #Inicializar as coordenadas do centro
-    center = None
+    contour = pp.getFrameContour(frame)
 
     #Verificando se pelo menos um contorno foi identificado
-    if len(contorno) > 0:
+    if len(contour) > 0:
 
-        #Identificando o maior contorno
-        c = max(contorno, key=cv2.contourArea)
-
-        #Identifica o menor delimitador
-        ((x, y), raio) = cv2.minEnclosingCircle(c)
-
-        #Identificando coordenadas do centro
-        M = cv2.moments(c)
-        center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+        radius, center = pp.getCenterOfContour(contour)
 
         #Aplicando o filtro de particulas com relacao ao centro
         lst_particulas = pf.filtro_de_particulas(center,lst_particulas)
@@ -85,9 +39,9 @@ while True:
         for part in lst_particulas:
             cv2.circle(frame, (int(part.pos_x),int(part.pos_y)), 5, (0, 255, 255), 2)
 
-        if raio > 10:
+        if radius > 10:
             #Printando o circulo calculado pela média das partículas
-            cv2.circle(frame, pft.media_pos(lst_particulas), int(raio),(0, 255, 255), 2)
+            cv2.circle(frame, pft.media_pos(lst_particulas), int(radius),(0, 255, 255), 2)
             #Printando a centroid obtida pelo OpenCV
             cv2.circle(frame, center, 5, (0, 0, 255), -1)
 
@@ -98,8 +52,6 @@ while True:
         #Se apertar a tecla "q", interrompe o Loop
         if key == ord("q"):
             break
-    #calculando o tempo para processar um frame
-    end = time.time()
 
 #fechar video e janelas
 video.release()

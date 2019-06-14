@@ -1,5 +1,6 @@
 # import OpenCV
 import cv2
+import imutils
 
 # HSV color boundaries
 corLower = (29, 86, 6)
@@ -27,4 +28,17 @@ def getFrameContour(frame):
 
     # Guarantee the openCV compatibility
     contour = contour[0] if imutils.is_cv2() else contour[1]
-    return contorno
+
+    return contour
+
+def getCenterOfContour(contour):
+    # Identifying biggest contour
+    c = max(contour, key=cv2.contourArea)
+
+    ((x, y), radius) = cv2.minEnclosingCircle(c)
+
+    # Center coordinates
+    M = cv2.moments(c)
+    center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+
+    return radius, center
