@@ -10,6 +10,8 @@ import cv2
 import particle_filter as pf
 import pf_tools as pft
 import time
+import pre-process as pp
+
 
 #Construindo a estrutura de argumentos
 ap = argparse.ArgumentParser()
