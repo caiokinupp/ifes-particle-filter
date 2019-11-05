@@ -27,10 +27,12 @@ model.load_weights(weights_path)
 model.eval() # evaluation mode == don`t track the gradient
 classes = utils.load_classes(class_path) # list with the name of classes from coco dataset
 
+def pilimage(frame):
+    # Creates an image memory from an object exporting the array interface
+    return Image.fromarray(frame)
 
-def detect_image(img):
+def preprocess(img):
     """
-    This is the function that will return detections for a specified image.
     Requires a Pillow image as input.
     """
     # transformation steps that will be applyed in the image
@@ -45,7 +47,12 @@ def detect_image(img):
 
     image_tensor = img_transforms(img) # apply transformation
     input_img = image_tensor.unsqueeze_(0)
+    return input_img
 
+def detect_image(input_img):
+    """
+    This is the function that will return detections for a specified image.
+    """
     # run inference on the model and get detections
     with torch.no_grad():
         detections = model(input_img)
@@ -72,8 +79,9 @@ while(True):
         break
     frames += 1
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    pilimg = Image.fromarray(frame) # Creates an image memory from an object exporting the array interface
-    detections = detect_image(pilimg) # get object detections from the actual frame
+    pilimg = pilimage(frame)
+    input_img = preprocess(pilimg)
+    detections = detect_image(input_img) # get object detections from the actual frame
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
     # Getting frame size references
